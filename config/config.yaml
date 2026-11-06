@@ -1,0 +1,48 @@
+# Global Pipeline Configuration for SDM & Bioclimatic Envelope Forecasting
+
+project:
+  name: "sdm-climate-niche"
+  version: "0.1.0"
+  description: "Species Distribution Modeling for Acer saccharum across Eastern Canada and NE US"
+
+taxon:
+  species: "Acer saccharum"
+  common_name: "Sugar Maple"
+  rank: "species"
+
+study_area:
+  bounding_box:
+    min_lon: -82.0
+    min_lat: 42.0
+    max_lon: -64.0
+    max_lat: 50.0
+    wkt: "POLYGON((-82 42, -64 42, -64 50, -82 50, -82 42))"
+  target_crs: "EPSG:102001" # Canada Albers Equal Area Conic
+  geographic_crs: "EPSG:4326"
+
+preprocessing:
+  min_year: 1970
+  max_coordinate_uncertainty_m: 1000.0
+  spatial_thinning_distance_km: 5.0
+  background_to_presence_ratio: 10
+  seed: 42
+
+features:
+  collinearity:
+    pearson_threshold: 0.75
+    vif_threshold: 5.0
+
+modeling:
+  cv_folds: 5
+  block_size_km: 100
+  models:
+    - "maxent"
+    - "lightgbm"
+
+projections:
+  scenarios:
+    - "ssp245"
+    - "ssp585"
+  years:
+    - 2050
+    - 2080
