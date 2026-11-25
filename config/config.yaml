@@ -2,7 +2,7 @@
 
 project:
   name: "sdm-climate-niche"
-  version: "0.1.0"
+  version: "0.2.0"
   description: "Species Distribution Modeling for Acer saccharum across Eastern Canada and NE US"
 
 taxon:
@@ -10,39 +10,87 @@ taxon:
   common_name: "Sugar Maple"
   rank: "species"
 
+# Dual spatial domains to prevent warm-edge niche truncation
 study_area:
-  bounding_box:
+  calibration_domain:
+    # Full eastern North American native range buffer
+    min_lon: -96.0
+    min_lat: 34.0
+    max_lon: -60.0
+    max_lat: 52.0
+    wkt: "POLYGON((-96 34, -60 34, -60 52, -96 52, -96 34))"
+  focal_domain:
+    # Eastern Canada & Northeastern US reporting domain
     min_lon: -82.0
     min_lat: 42.0
     max_lon: -64.0
     max_lat: 50.0
     wkt: "POLYGON((-82 42, -64 42, -64 50, -82 50, -82 42))"
-  target_crs: "EPSG:102001" # Canada Albers Equal Area Conic
+  target_crs: "EPSG:3978"       # NAD83 / Canada Atlas Lambert (valid pyproj equal-area CRS)
   geographic_crs: "EPSG:4326"
+  master_resolution_m: 1000     # 1 km aligned master grid
+
+ingestion:
+  gbif_mode: "download"         # Use async download API for full pulls (DOI-backed); "search" for probes only
+  target_group_genera:
+    - "Acer"
+    - "Fagus"
+    - "Betula"
+    - "Quercus"
+    - "Fraxinus"
+    - "Tilia"
 
 preprocessing:
-  min_year: 1970
+  baseline_min_year: 1970       # Matches WorldClim v2.1 baseline (1970-2000)
+  baseline_max_year: 2000
+  include_recent_sensitivity: true  # Optional sensitivity run extending through 2025
   max_coordinate_uncertainty_m: 1000.0
+  exclude_cultivated: true
+  exclude_centroids: true
+  grid_deduplicate_m: 1000.0
   spatial_thinning_distance_km: 5.0
-  background_to_presence_ratio: 10
+  n_background: 20000           # Target-group background sample size
+  balance_background_weights: true  # Down-weight background so sum(w_bg) == sum(w_pres)
   seed: 42
 
 features:
+  include_edaphic: true         # SoilGrids 2.0 (pH, SOC, texture) + DEM (elevation, slope, TWI)
+  run_climate_only_ablation: true
   collinearity:
     pearson_threshold: 0.75
     vif_threshold: 5.0
 
 modeling:
   cv_folds: 5
-  block_size_km: 100
+  block_size_method: "semivariogram"  # Estimate from predictor/residual autocorrelation range
+  fallback_block_size_km: 100
   models:
     - "maxent"
     - "lightgbm"
+  lightgbm:
+    objective: "binary"
+    clamp_extrapolation: true
+  evaluation:
+    primary_metric: "cbi"       # Continuous Boyce Index
+    secondary_metrics:
+      - "or10"                  # 10% training presence omission rate
+      - "auc_roc"               # Reported with presence-background prevalence caveat
+      - "calibration"
 
 projections:
   scenarios:
     - "ssp245"
     - "ssp585"
-  years:
-    - 2050
-    - 2080
+  periods:
+    - "2041-2060"
+    - "2061-2080"
+  gcms:
+    - "CanESM5"
+    - "IPSL-CM6A-LR"
+    - "MIROC6"
+    - "MPI-ESM1-2-HR"
+    - "MRI-ESM2-0"
+  compute_mess_mask: true
+  range_velocity_thresholds:
+    - "p10_training"
+    - "max_sss"

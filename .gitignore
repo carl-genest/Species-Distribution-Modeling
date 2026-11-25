@@ -5,8 +5,17 @@ env/
 .conda/
 .cache/
 
-# Data and large artifacts
-data/
+# Data and large artifacts (preserve empty folder structure via .gitkeep)
+data/*
+!data/raw/
+!data/processed/
+!data/outputs/
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/outputs/*
+!data/outputs/.gitkeep
 *.parquet
 *.tif
 *.tiff
